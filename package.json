@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
+  "bin": {
+    "pivotal-stats": "index.js"
+  },
   "engines": {
     "node": "7"
   },
