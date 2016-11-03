@@ -18,15 +18,11 @@ co(function *(){
     getProjectMembership,
   } = PV({ token })
 
-  console.log(colors.white.bold('Fetching projects...'))
   const projects = yield getProjects()
-  console.log(colors.green(`${projects.length} projects`))
-  console.log(colors.white.bold('Fetching projects\' stories...'))
   const projectsWithStories = yield projects.map(project => getProjectStories({
     projectId: project.id,
   })) 
   console.log(colors.green(`${projectsWithStories.reduce((acc, p) => p.length + acc, 0)} stories`))
-  console.log(colors.white.bold('Fetching projects\' members...'))
   const projectsMemberships = yield projects.map(project => ({
     projectId: project.id,
     memberships: getProjectMembership({
