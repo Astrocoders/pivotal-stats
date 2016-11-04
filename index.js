@@ -36,6 +36,7 @@ co(function *(){
   .value()
 
   console.log(colors.white.bold('Parsing data...'))
+  const c = fn => (...args) => source => fn.call(_, source, ...args)
   const stories = _(projectsWithStories)
     .flatten()
     .filter(story => !_.isEmpty(story.owner_ids))
@@ -46,9 +47,6 @@ co(function *(){
     .mapValues(stories => {
       return {
         totalPoints: stories.reduce((acc, { estimate = 0 }) => acc + estimate, 0),
-        // averageDeliveryTime: stories.map(({ accepted_at, finished_at, started_at }) => {
-        //   return 0
-        // })
       }
     })
     .value()
