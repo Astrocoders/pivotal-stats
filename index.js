@@ -23,34 +23,26 @@ co(function *(){
     projectId: project.id,
   })) 
   console.log(colors.green(`${projectsWithStories.reduce((acc, p) => p.length + acc, 0)} stories`))
-  const projectsMemberships = yield projects.map(project => ({
-    projectId: project.id,
-    memberships: getProjectMembership({
-      projectId: project.id,
-    }),
-  }))
+  const projectsMemberships = _(
+    yield projects.map(project => (
+      getProjectMembership({
+        projectId: project.id,
+      })
+    ))
+  )
+  .flatten()
+  .uniqBy('id')
+  .map(member => Object.assign(member, {id: member.person.id.toString()}))
+  .value()
 
   console.log(colors.white.bold('Parsing data...'))
   const stories = _(projectsWithStories)
     .flatten()
-    // Put the owner email instead of Pivotal's ID for easy checking
-    .map(story => {
-      const projectMemberships = _.find(projectsMemberships, { projectId: story.project_id }).memberships
-      const ownerId = _.first(story.owner_ids)
-      const owner = _.find(projectMemberships, membership => membership.person.id === ownerId )
-
-      if(!owner){
-        console.log(colors.red(`Owner #${ownerId} for story ${story.name} (#${story.id}) wasn't found.`))
-      }
-
-      return Object.assign(story, {
-        owner: _.get(owner, 'person.email', null),
-      })
+    .filter(story => !_.isEmpty(story.owner_ids))
+    .groupBy(story => _.first(story.owner_ids))
+    .mapKeys((stories, ownerId) => {
+      return _.find(projectsMemberships, { id: ownerId.toString() }).person.email
     })
-    // Should filter only the accepted ones because they are the ones the client approved?
-    // Or finished and accepted should go because they represent things worked on?
-    .filter(story => !_.isEmpty(story.owner))
-    .groupBy('owner')
     .mapValues(stories => {
       return {
         totalPoints: stories.reduce((acc, { estimate = 0 }) => acc + estimate, 0),
