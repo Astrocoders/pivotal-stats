@@ -1,6 +1,19 @@
 #!/usr/bin/env node
 const moment = require('moment')
 const _ = require('lodash')
+const {
+  flow,
+  map,
+  mapValues,
+  mapKeys,
+  groupBy,
+  uniqBy,
+  flatten,
+  filter,
+  isEmpty,
+  first,
+  find,
+} = require('lodash/fp')
 const co = require('co')
 const colors = require('colors/safe')
 const PV = require('./lib/helpers/pv')
@@ -23,33 +36,30 @@ co(function *(){
     projectId: project.id,
   })) 
   console.log(colors.green(`${projectsWithStories.reduce((acc, p) => p.length + acc, 0)} stories`))
-  const projectsMemberships = _(
+  const projectsMemberships = flow(
+    flatten,
+    uniqBy('id'),
+    map(member => Object.assign(member, {id: member.person.id.toString()}))
+  )(
     yield projects.map(project => (
       getProjectMembership({
         projectId: project.id,
       })
     ))
   )
-  .flatten()
-  .uniqBy('id')
-  .map(member => Object.assign(member, {id: member.person.id.toString()}))
-  .value()
 
   console.log(colors.white.bold('Parsing data...'))
-  const c = fn => (...args) => source => fn.call(_, source, ...args)
-  const stories = _(projectsWithStories)
-    .flatten()
-    .filter(story => !_.isEmpty(story.owner_ids))
-    .groupBy(story => _.first(story.owner_ids))
-    .mapKeys((stories, ownerId) => {
-      return _.find(projectsMemberships, { id: ownerId.toString() }).person.email
-    })
-    .mapValues(stories => {
-      return {
-        totalPoints: stories.reduce((acc, { estimate = 0 }) => acc + estimate, 0),
-      }
-    })
-    .value()
+  const stories = flow(
+    flatten,
+    filter(story => !isEmpty(story.owner_ids)),
+    groupBy(story => first(story.owner_ids)),
+    mapKeys(ownerId => (
+      find({ id: ownerId.toString() })(projectsMemberships).person.email
+    )),
+    mapValues(stories => ({
+      totalPoints: stories.reduce((acc, { estimate = 0 }) => acc + estimate, 0),
+    }))
+  )(projectsWithStories)
 
   printStoriesStats(stories)
 })
